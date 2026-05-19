@@ -1,0 +1,302 @@
+// OdontIAChat — Portal database schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------- Clinic ----------
+
+model Clinic {
+  id                String    @id @default(cuid())
+  name              String
+  cnpj              String?   @unique
+  email             String    @unique
+  phone             String?
+  address           String?
+  city              String?
+  state             String?
+  logo              String?
+  description       String?
+  workingHours      Json? // { monday: { start, end, lunchStart?, lunchEnd? }, ... }
+  specialties       String[]  @default([])
+  acceptedInsurance String[]  @default([])
+  paymentMethods    String[]  @default([])
+  plan              String    @default("clinica")
+  status            String    @default("active")
+  onboardingStep    Int       @default(0) // 0..4 (0 = not started, 4 = done)
+  onboardingDone    Boolean   @default(false)
+  knowledgeCompletedAt DateTime? // null = knowledge form not filled yet
+
+  // Google Calendar OAuth (per-clinic)
+  googleCalendarId     String?  @default("primary")
+  googleAccountEmail   String?
+  googleRefreshToken   String?
+  googleAccessToken    String?
+  googleTokenExpiry    DateTime?
+  googleConnectedAt    DateTime?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  users         User[]
+  conversations Conversation[]
+  appointments  Appointment[]
+  patients      Patient[]
+  procedures    Procedure[]
+  aiConfig      AIConfig?
+  knowledge     ClinicKnowledge?
+  invites       Invite[]
+
+  @@index([status])
+}
+
+// ---------- Clinic Knowledge (deep info for the AI to answer well) ----------
+
+model ClinicKnowledge {
+  id        String   @id @default(cuid())
+  clinicId  String   @unique
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Localização e logística
+  addressReferences    String? // referências de localização (próximo a X)
+  parkingInfo          String? // tem estacionamento? gratuito?
+  accessibilityInfo    String? // rampa, banheiro adaptado, etc.
+  publicTransportInfo  String? // metrô/ônibus próximo
+
+  // Atendimento
+  acceptsChildren      Boolean  @default(true)
+  childrenMinAge       String?  // ex: "a partir de 3 anos"
+  emergencyInfo        String?  // atende emergência? como?
+  averageWaitTime      String?  // tempo médio de espera
+  languagesSpoken      String[] @default([]) // ["português", "inglês"]
+
+  // Políticas
+  cancellationPolicy   String?  // política de cancelamento
+  latenessPolicy       String?  // até X min de atraso, atende
+  noShowPolicy         String?  // o que acontece se faltar
+
+  // Primeira consulta
+  firstVisitInfo       String?  // o que levar (RG, carteirinha...)
+  firstVisitDuration   String?  // duração média
+
+  // Equipe e diferenciais
+  yearsInBusiness      Int?     // anos de mercado
+  differentiators      String?  // diferenciais (equipamentos modernos, etc)
+  teamDescription      String?  // sobre a equipe (sem nomes pessoais sensíveis)
+
+  // Procedimentos não oferecidos
+  notOfferedProcedures String?  // pra IA dizer "infelizmente não fazemos X aqui"
+  partnerReferrals     String?  // pra onde indicar quando não faz
+
+  // FAQs personalizados — perguntas frequentes da clínica
+  faqs                 Json?    // [{question: string, answer: string}]
+
+  // Notas livres
+  additionalNotes      String?  // qualquer outra info relevante
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// ---------- User (linked to Supabase auth.users via id) ----------
+
+model User {
+  id        String   @id @db.Uuid // matches auth.users.id from Supabase
+  email     String   @unique
+  name      String
+  role      Role     @default(ADMIN)
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+}
+
+enum Role {
+  ADMIN
+  ATTENDANT
+  DENTIST
+}
+
+// ---------- Team invites ----------
+
+model Invite {
+  id        String   @id @default(cuid())
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  email     String
+  role      Role     @default(ATTENDANT)
+  token     String   @unique
+  expiresAt DateTime
+  acceptedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([clinicId])
+  @@index([email])
+}
+
+// ---------- AI Configuration ----------
+
+model AIConfig {
+  id                 String   @id @default(cuid())
+  clinicId           String   @unique
+  clinic             Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  tone               String   @default("acolhedor") // formal | casual | acolhedor
+  greeting           String   @default("Olá! Sou a OdontIAChat, assistente da clínica. Como posso ajudar?")
+  outOfHoursMsg      String   @default("No momento estamos fora do horário de atendimento. Deixe sua mensagem que retornaremos assim que possível.")
+  farewell           String   @default("Foi um prazer atender você! Qualquer dúvida, estou por aqui. 😊")
+  useEmojis          Boolean  @default(true)
+  triageQuestions    String[] @default([])
+  escalationKeywords String[] @default([])
+  status             String   @default("active") // active | paused
+  updatedAt          DateTime @updatedAt
+}
+
+// ---------- Patients ----------
+
+model Patient {
+  id        String    @id @default(cuid())
+  clinicId  String
+  clinic    Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String
+  email     String?
+  birthDate DateTime?
+  notes     String?
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  conversations Conversation[]
+  appointments  Appointment[]
+
+  @@unique([clinicId, phone])
+  @@index([clinicId])
+}
+
+// ---------- Conversations & Messages ----------
+
+model Conversation {
+  id            String   @id @default(cuid())
+  clinicId      String
+  clinic        Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId     String?
+  patient       Patient? @relation(fields: [patientId], references: [id])
+  channel       String   @default("whatsapp")
+  externalId    String?
+  status        String   @default("active") // active | archived
+  handledBy     String   @default("ai") // ai | attendant
+  lastMessageAt DateTime
+  unreadCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  messages Message[]
+
+  @@index([clinicId, lastMessageAt(sort: Desc)])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         String // patient | ai | attendant
+  content        String
+  type           String       @default("text")
+  mediaUrl       String?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// ---------- Procedures ----------
+
+model Procedure {
+  id               String   @id @default(cuid())
+  clinicId         String
+  clinic           Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name             String
+  duration         Int // minutes
+  price            Decimal? @db.Decimal(10, 2)
+  acceptsInsurance Boolean  @default(false)
+  showPrice        Boolean  @default(true)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  appointments Appointment[]
+
+  @@index([clinicId])
+}
+
+// ---------- Lead (form submissions from the landing) ----------
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  WON
+  LOST
+}
+
+model Lead {
+  id         String     @id @default(cuid())
+  name       String
+  email      String
+  whatsapp   String
+  clinicName String
+  dentists   String? // free-text bucket (1, 2-5, 6-10, 10+)
+  source     String     @default("landing")
+  status     LeadStatus @default(NEW)
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([status, createdAt])
+}
+
+// ---------- Appointments ----------
+
+model Appointment {
+  id          String     @id @default(cuid())
+  clinicId    String
+  clinic      Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId   String
+  patient     Patient    @relation(fields: [patientId], references: [id])
+  procedureId String?
+  procedure   Procedure? @relation(fields: [procedureId], references: [id])
+  dentistId   String?
+  startsAt    DateTime
+  endsAt      DateTime
+  status      String     @default("confirmed") // confirmed | pending | cancelled | completed
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  reminders   Reminder[]
+
+  @@index([clinicId, startsAt])
+  @@index([patientId])
+}
+
+// ---------- Reminders (pre-consultation WhatsApp nudges) ----------
+
+model Reminder {
+  id            String       @id @default(cuid())
+  clinicId      String
+  appointmentId String
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  scheduledFor  DateTime     // when the bot should send the reminder (typically startsAt - 24h)
+  sentAt        DateTime?
+  status        String       @default("pending") // pending | sent | failed | skipped
+  createdAt     DateTime     @default(now())
+
+  @@index([status, scheduledFor])
+  @@index([clinicId])
+  @@index([appointmentId])
+}

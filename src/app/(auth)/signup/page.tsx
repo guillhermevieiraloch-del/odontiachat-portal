@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
@@ -25,6 +26,23 @@ function SubmitButton({ invited }: { invited: boolean }) {
 }
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={<SignupFallback />}>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupFallback() {
+  return (
+    <div className="rounded-xl bg-bg-base p-8 shadow-lg border border-border">
+      <h1 className="text-3xl font-display font-bold mb-2">Criar conta</h1>
+      <p className="text-text-secondary">Carregando...</p>
+    </div>
+  );
+}
+
+function SignupForm() {
   const [state, formAction] = useFormState(signupAction, initialState);
   const params = useSearchParams();
   const inviteToken = params.get("invite") ?? "";

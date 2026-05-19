@@ -32,14 +32,23 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
 
-  // ESC to close + body scroll lock + focus management
+  // Keep the latest onClose available without re-running the open effect.
+  // Without this, callers that pass inline arrow functions would re-trigger
+  // the focus logic on every render and steal focus from inputs mid-typing.
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // ESC to close + body scroll lock + focus management.
+  // Runs ONLY when `open` flips — not on every parent render.
   useEffect(() => {
     if (!open) return;
 
     previouslyFocusedRef.current = document.activeElement as HTMLElement;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
 
@@ -59,7 +68,7 @@ export function Modal({
       document.body.style.overflow = prevOverflow;
       previouslyFocusedRef.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   if (typeof document === "undefined") return null;

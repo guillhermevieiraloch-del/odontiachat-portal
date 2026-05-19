@@ -29,7 +29,7 @@ export function Logo({ className, iconOnly = false, size = "md" }: LogoProps) {
         alt=""
         width={cfg.icon}
         height={cfg.icon}
-        className="object-contain flex-shrink-0 drop-shadow-[0_4px_10px_rgba(13,59,102,0.18)]"
+        className="object-contain flex-shrink-0 drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(89,178,255,0.25)]"
         style={{
           width: cfg.icon,
           height: cfg.icon,

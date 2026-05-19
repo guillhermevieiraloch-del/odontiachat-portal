@@ -25,7 +25,11 @@ export interface ClinicFormInitial {
   cnpj: string;
   email: string;
   phone: string;
+  zipCode: string;
   address: string;
+  addressNumber: string;
+  addressComplement: string;
+  neighborhood: string;
   city: string;
   state: string;
   description: string;
@@ -159,14 +163,59 @@ export function ClinicForm({ initial }: { initial: ClinicFormInitial }) {
       </SettingsSection>
 
       {/* Endereço */}
-      <SettingsSection title="Endereço">
+      <SettingsSection
+        title="Endereço"
+        description="Onde a clínica fica. A IA usa isso pra responder pacientes que perguntam localização."
+      >
         <div className="space-y-4">
-          <Field label="Endereço completo" htmlFor="address">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Field label="CEP" htmlFor="zipCode">
+              <Input
+                id="zipCode"
+                value={state.zipCode}
+                onChange={(e) => update("zipCode", e.target.value)}
+                placeholder="00000-000"
+                maxLength={9}
+              />
+            </Field>
+            <Field label="Logradouro" htmlFor="address" className="md:col-span-2">
+              <Input
+                id="address"
+                value={state.address}
+                onChange={(e) => update("address", e.target.value)}
+                placeholder="Av. Paulista"
+              />
+            </Field>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Field label="Número" htmlFor="addressNumber">
+              <Input
+                id="addressNumber"
+                value={state.addressNumber}
+                onChange={(e) => update("addressNumber", e.target.value)}
+                placeholder="123"
+              />
+            </Field>
+            <Field
+              label="Complemento"
+              htmlFor="addressComplement"
+              className="md:col-span-2"
+              hint="Sala, andar, bloco"
+            >
+              <Input
+                id="addressComplement"
+                value={state.addressComplement}
+                onChange={(e) => update("addressComplement", e.target.value)}
+                placeholder="Sala 502"
+              />
+            </Field>
+          </div>
+          <Field label="Bairro" htmlFor="neighborhood">
             <Input
-              id="address"
-              value={state.address}
-              onChange={(e) => update("address", e.target.value)}
-              placeholder="Rua, número, bairro"
+              id="neighborhood"
+              value={state.neighborhood}
+              onChange={(e) => update("neighborhood", e.target.value)}
+              placeholder="Bela Vista"
             />
           </Field>
           <div className="grid grid-cols-3 gap-4">

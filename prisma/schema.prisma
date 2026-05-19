@@ -20,8 +20,12 @@ model Clinic {
   email             String    @unique
   phone             String?
   address           String?
+  addressNumber     String?
+  addressComplement String?
+  neighborhood      String?
   city              String?
   state             String?
+  zipCode           String?
   logo              String?
   description       String?
   workingHours      Json? // { monday: { start, end, lunchStart?, lunchEnd? }, ... }
@@ -46,6 +50,7 @@ model Clinic {
   updatedAt         DateTime  @updatedAt
 
   users         User[]
+  dentists      Dentist[]
   conversations Conversation[]
   appointments  Appointment[]
   patients      Patient[]
@@ -114,10 +119,34 @@ model User {
   role      Role     @default(ADMIN)
   clinicId  String
   clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  dentist   Dentist?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([clinicId])
+}
+
+// ---------- Dentist (clinical professionals — separate from User auth) ----------
+
+model Dentist {
+  id          String   @id @default(cuid())
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  userId      String?  @unique @db.Uuid // optional link to a portal User
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name        String
+  specialty   String   // ex: "Ortodontia", "Endodontia", "Clínica Geral"
+  cro         String?  // registro CRO opcional
+  email       String?
+  phone       String?
+  bio         String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  appointments Appointment[]
+
+  @@index([clinicId, active])
 }
 
 enum Role {
@@ -272,6 +301,7 @@ model Appointment {
   procedureId String?
   procedure   Procedure? @relation(fields: [procedureId], references: [id])
   dentistId   String?
+  dentist     Dentist?   @relation(fields: [dentistId], references: [id])
   startsAt    DateTime
   endsAt      DateTime
   status      String     @default("confirmed") // confirmed | pending | cancelled | completed

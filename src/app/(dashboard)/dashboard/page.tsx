@@ -9,6 +9,7 @@ import { AppointmentsCard } from "@/components/dashboard/appointments-card";
 import { AIStatusCard } from "@/components/dashboard/ai-status-card";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { SetupChecklistCard } from "@/components/dashboard/setup-checklist";
+import { UsageCard } from "@/components/dashboard/usage-card";
 import {
   getDashboardMetrics,
   getActivityChartData,
@@ -17,6 +18,7 @@ import {
   getMetricSparklines,
 } from "@/lib/queries/dashboard";
 import { getSetupChecklist } from "@/lib/queries/setup-checklist";
+import { getCurrentMonthUsage } from "@/lib/queries/usage";
 import { botClient } from "@/lib/bot-client";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +26,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const { profile, clinic } = await requireUser();
 
-  const [m, chartData, conversations, appointments, whatsappStatus, sparks] =
+  const [m, chartData, conversations, appointments, whatsappStatus, sparks, usage] =
     await Promise.all([
       getDashboardMetrics(clinic.id),
       getActivityChartData(clinic.id),
@@ -32,6 +34,7 @@ export default async function DashboardPage() {
       getUpcomingAppointmentsPreview(clinic.id),
       botClient.getStatus(clinic.id).catch(() => null),
       getMetricSparklines(clinic.id),
+      getCurrentMonthUsage(clinic.id, clinic.plan, clinic.billingCycleStart),
     ]);
 
   const whatsappConnected = whatsappStatus?.status === "ready";
@@ -160,6 +163,8 @@ export default async function DashboardPage() {
         <ConversationsCard items={conversations} />
         <AppointmentsCard items={appointments} />
       </div>
+
+      <UsageCard {...usage} />
 
       <QuickActions />
     </div>

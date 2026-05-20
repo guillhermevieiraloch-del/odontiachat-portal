@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { db } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/email";
+import { TRIAL_DURATION_DAYS } from "@/lib/plans";
 
 const signupSchema = z.object({
   name: z.string().min(2, "Informe seu nome completo"),
@@ -102,12 +103,17 @@ export async function signupAction(
         });
       });
     } else {
-      // Self-signup — create new Clinic
+      // Self-signup — create new Clinic in 14-day free trial
+      const trialEndsAt = new Date(
+        Date.now() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000,
+      );
       await db.$transaction(async (tx) => {
         const clinic = await tx.clinic.create({
           data: {
             name: clinicName!,
             email,
+            plan: "trial",
+            trialEndsAt,
             aiConfig: { create: {} },
           },
         });

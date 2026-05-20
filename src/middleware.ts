@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_ROUTES = ["/login", "/signup", "/esqueci-senha", "/resetar-senha"];
-const OPEN_ROUTES = ["/privacidade", "/termos", "/aceitar-convite", "/precos"];
+const OPEN_ROUTES = ["/privacidade", "/termos", "/aceitar-convite", "/precos", "/demo"];
 
 export async function middleware(request: NextRequest) {
   // Forward the pathname as a header so server components can read it.

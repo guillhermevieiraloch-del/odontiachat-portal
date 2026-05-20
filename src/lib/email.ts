@@ -186,6 +186,171 @@ export async function sendInviteEmail(payload: InvitePayload): Promise<void> {
   }
 }
 
+interface UsageAlertPayload {
+  to: string;
+  clinicName: string;
+  threshold: 80 | 95 | 100;
+  messagesUsed: number;
+  messageLimit: number;
+  planLabel: string;
+  cycleEnd: Date;
+  upgradeUrl: string;
+}
+
+export async function sendUsageAlertEmail(
+  payload: UsageAlertPayload,
+): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "OdontIAChat <onboarding@resend.dev>";
+
+  const isOver = payload.threshold >= 100;
+  const subjectMap = {
+    80: `Você usou 80% do limite mensal — ${payload.clinicName}`,
+    95: `⚠️ Você está quase no limite mensal — ${payload.clinicName}`,
+    100: `🚨 Limite mensal atingido — mensagens extras serão cobradas`,
+  };
+
+  const subject = subjectMap[payload.threshold];
+  const cycleEndStr = payload.cycleEnd.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+  });
+
+  const lines = [
+    `Olá!`,
+    ``,
+    `A clínica ${payload.clinicName} (plano ${payload.planLabel}) está em ${payload.threshold}% do limite de mensagens do mês.`,
+    ``,
+    `📊 Usado: ${payload.messagesUsed.toLocaleString("pt-BR")} de ${payload.messageLimit.toLocaleString("pt-BR")} msgs`,
+    `📅 Ciclo termina em: ${cycleEndStr}`,
+    ``,
+  ];
+
+  if (payload.threshold === 80) {
+    lines.push(
+      `Você ainda tem ${(payload.messageLimit - payload.messagesUsed).toLocaleString("pt-BR")} mensagens disponíveis. Sem urgência, mas vale ficar de olho.`,
+    );
+  } else if (payload.threshold === 95) {
+    lines.push(
+      `Cada mensagem após o limite vai custar R$ 0,15.`,
+      `Considere fazer upgrade pra evitar excedente: ${payload.upgradeUrl}`,
+    );
+  } else {
+    lines.push(
+      `As mensagens extras estão sendo cobradas a R$ 0,15 cada.`,
+      `Fazer upgrade pra plano superior costuma sair mais barato: ${payload.upgradeUrl}`,
+      ``,
+      `O bot continua respondendo normalmente — só te avisamos pra você não ser pego de surpresa na fatura.`,
+    );
+  }
+
+  lines.push(
+    ``,
+    `Qualquer dúvida, é só responder esse e-mail.`,
+    ``,
+    `OdontIAChat`,
+  );
+
+  const text = lines.join("\n");
+
+  if (!apiKey) {
+    console.log("\n══════════════════════════════════════════════");
+    console.log("📨 USAGE ALERT EMAIL (dev mode)");
+    console.log(`Para: ${payload.to} | Threshold: ${payload.threshold}%`);
+    console.log(subject);
+    console.log("");
+    console.log(text);
+    console.log("══════════════════════════════════════════════\n");
+    return;
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [payload.to],
+      subject,
+      text,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Resend respondeu ${res.status}: ${err}`);
+  }
+}
+
+interface TrialEndingPayload {
+  to: string;
+  clinicName: string;
+  daysLeft: number;
+  trialEndsAt: Date;
+  upgradeUrl: string;
+}
+
+export async function sendTrialEndingEmail(
+  payload: TrialEndingPayload,
+): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "OdontIAChat <onboarding@resend.dev>";
+
+  const subject =
+    payload.daysLeft === 0
+      ? `Seu teste grátis acabou — escolha um plano pra continuar`
+      : `Restam ${payload.daysLeft} dia${payload.daysLeft === 1 ? "" : "s"} de teste — ${payload.clinicName}`;
+
+  const text = [
+    `Olá!`,
+    ``,
+    payload.daysLeft === 0
+      ? `O teste grátis da ${payload.clinicName} terminou hoje.`
+      : `Restam ${payload.daysLeft} ${payload.daysLeft === 1 ? "dia" : "dias"} do seu teste grátis na ${payload.clinicName}.`,
+    ``,
+    `Pra manter o atendimento por IA ativo sem interrupção, escolha um plano:`,
+    payload.upgradeUrl,
+    ``,
+    payload.daysLeft === 0
+      ? `Seus dados ficam guardados por 30 dias. Se voltar dentro desse prazo, é só assinar um plano e continuar de onde parou.`
+      : `Cancele quando quiser. Sem fidelidade.`,
+    ``,
+    `OdontIAChat`,
+  ].join("\n");
+
+  if (!apiKey) {
+    console.log("\n══════════════════════════════════════════════");
+    console.log("📨 TRIAL ENDING EMAIL (dev mode)");
+    console.log(`Para: ${payload.to} | Dias restantes: ${payload.daysLeft}`);
+    console.log(subject);
+    console.log("");
+    console.log(text);
+    console.log("══════════════════════════════════════════════\n");
+    return;
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [payload.to],
+      subject,
+      text,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Resend respondeu ${res.status}: ${err}`);
+  }
+}
+
 function formatLeadEmail(lead: Lead): string {
   return [
     `Novo lead na landing page:`,

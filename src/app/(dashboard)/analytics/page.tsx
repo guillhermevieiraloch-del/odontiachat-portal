@@ -13,17 +13,24 @@ import {
   getAnalyticsSummary,
   getAnalyticsDaily,
 } from "@/lib/queries/analytics";
+import { getProAnalytics } from "@/lib/queries/analytics-pro";
+import { getPlan } from "@/lib/plans";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { ActivityChart } from "@/components/dashboard/activity-chart";
+import { ProAnalyticsBlocks, ProAnalyticsLocked } from "@/components/analytics/pro-blocks";
+import { ExportCard } from "@/components/analytics/export-card";
 
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
   const { clinic } = await requireUser();
+  const plan = getPlan(clinic.plan);
+  const hasAdvanced = plan.features.advancedAnalytics;
 
-  const [summary, daily] = await Promise.all([
+  const [summary, daily, pro] = await Promise.all([
     getAnalyticsSummary(clinic.id),
     getAnalyticsDaily(clinic.id),
+    hasAdvanced ? getProAnalytics(clinic.id) : Promise.resolve(null),
   ]);
 
   return (
@@ -204,6 +211,14 @@ export default async function AnalyticsPage() {
           </span>
         </div>
       </section>
+
+      {hasAdvanced && pro ? (
+        <ProAnalyticsBlocks data={pro} />
+      ) : (
+        <ProAnalyticsLocked />
+      )}
+
+      <ExportCard unlocked={plan.features.csvExport} />
     </div>
   );
 }

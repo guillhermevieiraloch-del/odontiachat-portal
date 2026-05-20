@@ -35,6 +35,8 @@ model Clinic {
   plan              String    @default("trial") // trial | solo | clinica | pro | enterprise
   trialEndsAt       DateTime?
   billingCycleStart DateTime  @default(now()) // anchor pra resetar contadores mensais
+  lastUsageAlertPct Int       @default(0)     // último limiar (0/80/95/100) já alertado por email no ciclo atual
+  lastUsageAlertAt  DateTime?                  // quando enviamos o último alerta — reseta se < billingCycleStart
   status            String    @default("active")
   onboardingStep    Int       @default(0) // 0..4 (0 = not started, 4 = done)
   onboardingDone    Boolean   @default(false)

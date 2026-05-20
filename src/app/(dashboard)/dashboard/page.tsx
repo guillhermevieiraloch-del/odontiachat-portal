@@ -10,6 +10,7 @@ import { AIStatusCard } from "@/components/dashboard/ai-status-card";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { SetupChecklistCard } from "@/components/dashboard/setup-checklist";
 import { UsageCard } from "@/components/dashboard/usage-card";
+import { TrialBanner } from "@/components/dashboard/trial-banner";
 import {
   getDashboardMetrics,
   getActivityChartData,
@@ -49,6 +50,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
+      {clinic.plan === "trial" && clinic.trialEndsAt && (
+        <TrialBanner trialEndsAt={clinic.trialEndsAt.toISOString()} />
+      )}
+
       <SetupChecklistCard checklist={setup} />
 
       {/* ─── Header com saudação ─── */}

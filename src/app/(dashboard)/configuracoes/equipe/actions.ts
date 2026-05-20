@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Role } from "@prisma/client";
 import { sendInviteEmail } from "@/lib/email";
+import { getPlan } from "@/lib/plans";
 
 const inviteSchema = z.object({
   email: z.string().trim().email("E-mail inválido"),
@@ -30,6 +31,23 @@ export async function inviteTeamMemberAction(
   }
   const data = parsed.data;
   const email = data.email.toLowerCase();
+
+  // Cap por tier — conta membros + convites pendentes
+  const plan = getPlan(clinic.plan);
+  if (plan.maxTeamMembers !== Infinity) {
+    const [members, pendingCount] = await Promise.all([
+      db.user.count({ where: { clinicId: clinic.id } }),
+      db.invite.count({
+        where: { clinicId: clinic.id, acceptedAt: null },
+      }),
+    ]);
+    if (members + pendingCount >= plan.maxTeamMembers) {
+      return {
+        ok: false,
+        error: `Seu plano ${plan.label} permite até ${plan.maxTeamMembers} membro${plan.maxTeamMembers === 1 ? "" : "s"} na equipe (incluindo convites pendentes). Faça upgrade pra adicionar mais.`,
+      };
+    }
+  }
 
   // Already part of the clinic?
   const existing = await db.user.findFirst({

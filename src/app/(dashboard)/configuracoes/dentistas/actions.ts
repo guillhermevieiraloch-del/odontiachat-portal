@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getPlan } from "@/lib/plans";
 
 const dentistSchema = z.object({
   name: z.string().trim().min(2, "Nome obrigatório"),
@@ -30,6 +31,20 @@ export async function createDentistAction(input: DentistInput): Promise<ActionRe
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
   }
   const d = parsed.data;
+
+  // Cap por tier
+  const plan = getPlan(clinic.plan);
+  if (plan.maxDentists !== Infinity) {
+    const count = await db.dentist.count({
+      where: { clinicId: clinic.id, active: true },
+    });
+    if (count >= plan.maxDentists) {
+      return {
+        ok: false,
+        error: `Seu plano ${plan.label} permite até ${plan.maxDentists} dentista${plan.maxDentists === 1 ? "" : "s"}. Faça upgrade pra adicionar mais.`,
+      };
+    }
+  }
 
   if (d.userId) {
     const user = await db.user.findFirst({

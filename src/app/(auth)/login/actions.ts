@@ -43,11 +43,19 @@ export async function loginAction(
   // Decide where to send the user based on onboarding state.
   const profile = await db.user.findUnique({
     where: { id: data.user.id },
-    include: { clinic: { select: { onboardingDone: true } } },
+    select: {
+      isPlatformAdmin: true,
+      clinic: { select: { onboardingDone: true } },
+    },
   });
 
   if (!profile) {
     return { error: "Conta não vinculada a nenhuma clínica. Fale com o suporte." };
+  }
+
+  // Conta de admin da plataforma vai direto pro centro de controle.
+  if (profile.isPlatformAdmin) {
+    redirect("/admin");
   }
 
   redirect(profile.clinic.onboardingDone ? "/dashboard" : "/onboarding");

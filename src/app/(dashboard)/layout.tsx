@@ -11,6 +11,11 @@ export default async function DashboardGroupLayout({
 }) {
   const { profile, clinic } = await requireUser();
 
+  // Conta de admin da plataforma não usa o portal da clínica — vai pro /admin.
+  if (profile.isPlatformAdmin) {
+    redirect("/admin");
+  }
+
   if (!clinic.onboardingDone) {
     redirect("/onboarding");
   }

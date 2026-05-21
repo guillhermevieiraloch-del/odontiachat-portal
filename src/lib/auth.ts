@@ -29,17 +29,12 @@ export async function requireUser() {
 
 /**
  * Gate for the internal developer area (/admin/*).
- * Allowed emails come from the ADMIN_EMAILS env var (comma-separated).
- * Anyone not on the list is bounced to the normal dashboard.
+ * Admin status is a flag on the User row (User.isPlatformAdmin) — set
+ * directly in the database. No env var to misconfigure.
  */
 export async function requireAdmin() {
   const ctx = await requireUser();
-  const allow = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (!allow.includes(ctx.authUser.email?.toLowerCase() ?? "")) {
+  if (!ctx.profile.isPlatformAdmin) {
     redirect("/dashboard");
   }
   return ctx;

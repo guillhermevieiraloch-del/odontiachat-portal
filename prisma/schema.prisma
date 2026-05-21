@@ -136,15 +136,16 @@ model ClinicKnowledge {
 // ---------- User (linked to Supabase auth.users via id) ----------
 
 model User {
-  id        String   @id @db.Uuid // matches auth.users.id from Supabase
-  email     String   @unique
-  name      String
-  role      Role     @default(ADMIN)
-  clinicId  String
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  dentist   Dentist?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @db.Uuid // matches auth.users.id from Supabase
+  email           String   @unique
+  name            String
+  role            Role     @default(ADMIN)
+  isPlatformAdmin Boolean  @default(false) // acesso ao /admin (centro de controle do dono do SaaS)
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  dentist         Dentist?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([clinicId])
 }

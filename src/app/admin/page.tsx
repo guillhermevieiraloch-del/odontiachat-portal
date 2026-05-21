@@ -15,6 +15,12 @@ function fmtDate(iso: string): string {
   });
 }
 
+/** Formata margem em centavos, lidando com valores negativos (formatPriceBRL
+ * trata negativo como "Sob consulta", o que não serve pra margem). */
+function fmtMargin(cents: number): string {
+  return cents < 0 ? `- ${formatPriceBRL(-cents)}` : formatPriceBRL(cents);
+}
+
 function trialBadge(iso: string | null): { text: string; cls: string } | null {
   if (!iso) return null;
   const days = Math.ceil(
@@ -76,7 +82,7 @@ export default async function AdminPage() {
     },
     {
       label: "Margem bruta",
-      value: formatPriceBRL(totals.grossMarginCents),
+      value: fmtMargin(totals.grossMarginCents),
       sub:
         totals.mrrCents > 0
           ? `${Math.round((totals.grossMarginCents / totals.mrrCents) * 100)}% do MRR`
@@ -239,7 +245,7 @@ export default async function AdminPage() {
                         )}
                       >
                         {c.monthlyRevenueCents > 0
-                          ? formatPriceBRL(Math.round(margin))
+                          ? fmtMargin(Math.round(margin))
                           : "—"}
                       </td>
                       <td className="px-4 py-3 text-xs text-text-muted tabular-nums">

@@ -51,7 +51,11 @@ export async function getCurrentMonthUsage(
       _sum: { estimatedCostCents: true },
     }),
   ]);
-  const estimatedCostCents = costAgg._sum.estimatedCostCents ?? 0;
+  // UsageEvent.estimatedCostCents é gravado em MILÉSIMOS de centavo
+  // (precisão por mensagem). Converte pra centavos (÷1000) pra exibição.
+  const estimatedCostCents = Math.round(
+    (costAgg._sum.estimatedCostCents ?? 0) / 1000,
+  );
 
   const limit = plan.monthlyMessageLimit;
   const usageRatio =

@@ -58,9 +58,9 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       });
 
       const messagesUsed = events.filter((e) => e.type === "ai_message").length;
-      const estimatedCostCents = events.reduce(
-        (s, e) => s + e.estimatedCostCents,
-        0,
+      // estimatedCostCents é gravado em MILÉSIMOS de centavo — converte pra centavos.
+      const estimatedCostCents = Math.round(
+        events.reduce((s, e) => s + e.estimatedCostCents, 0) / 1000,
       );
       const limit = plan.monthlyMessageLimit;
 

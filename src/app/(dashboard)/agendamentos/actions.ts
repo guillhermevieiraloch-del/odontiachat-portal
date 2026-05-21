@@ -93,16 +93,20 @@ export async function createAppointmentAction(
     },
   });
 
-  // Schedule a reminder for 24h before the appointment (if there's enough time)
-  const reminderTime = new Date(startsAt.getTime() - 24 * 60 * 60 * 1000);
-  if (reminderTime.getTime() > Date.now() + 60 * 60 * 1000) {
-    await db.reminder.create({
-      data: {
-        clinicId: clinic.id,
-        appointmentId: appt.id,
-        scheduledFor: reminderTime,
-      },
-    });
+  // Agenda o lembrete conforme a config da clínica (liga/desliga + horas antes)
+  if (clinic.remindersEnabled) {
+    const hours =
+      clinic.reminderHoursBefore > 0 ? clinic.reminderHoursBefore : 24;
+    const reminderTime = new Date(startsAt.getTime() - hours * 60 * 60 * 1000);
+    if (reminderTime.getTime() > Date.now() + 5 * 60 * 1000) {
+      await db.reminder.create({
+        data: {
+          clinicId: clinic.id,
+          appointmentId: appt.id,
+          scheduledFor: reminderTime,
+        },
+      });
+    }
   }
 
   // Reflect into the clinic's Google Calendar — best-effort, never blocks
@@ -215,15 +219,31 @@ export async function updateAppointmentAction(
     },
   });
 
-  // Reagendou: atualiza reminders pendentes para 24h antes do novo horário
+  // Reagendou: reposiciona o lembrete conforme a config da clínica
   const timeChanged = startsAt.getTime() !== current.startsAt.getTime();
   if (timeChanged) {
-    const newReminderTime = new Date(startsAt.getTime() - 24 * 60 * 60 * 1000);
-    if (newReminderTime.getTime() > Date.now() + 60 * 60 * 1000) {
-      await db.reminder.updateMany({
+    const hours =
+      clinic.reminderHoursBefore > 0 ? clinic.reminderHoursBefore : 24;
+    const newReminderTime = new Date(
+      startsAt.getTime() - hours * 60 * 60 * 1000,
+    );
+    if (
+      clinic.remindersEnabled &&
+      newReminderTime.getTime() > Date.now() + 5 * 60 * 1000
+    ) {
+      const updated = await db.reminder.updateMany({
         where: { appointmentId: data.id, status: "pending" },
         data: { scheduledFor: newReminderTime },
       });
+      if (updated.count === 0) {
+        await db.reminder.create({
+          data: {
+            clinicId: clinic.id,
+            appointmentId: data.id,
+            scheduledFor: newReminderTime,
+          },
+        });
+      }
     } else {
       await db.reminder.updateMany({
         where: { appointmentId: data.id, status: "pending" },

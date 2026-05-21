@@ -34,7 +34,20 @@ export interface ClinicFormInitial {
   state: string;
   description: string;
   workingHours: Record<string, DayHours>;
+  remindersEnabled: boolean;
+  reminderHoursBefore: number;
 }
+
+const REMINDER_OPTIONS = [
+  { value: 1, label: "1 hora antes" },
+  { value: 2, label: "2 horas antes" },
+  { value: 3, label: "3 horas antes" },
+  { value: 6, label: "6 horas antes" },
+  { value: 12, label: "12 horas antes" },
+  { value: 24, label: "1 dia antes (24 horas)" },
+  { value: 48, label: "2 dias antes (48 horas)" },
+  { value: 72, label: "3 dias antes (72 horas)" },
+];
 
 export function ClinicForm({ initial }: { initial: ClinicFormInitial }) {
   const router = useRouter();
@@ -320,6 +333,54 @@ export function ClinicForm({ initial }: { initial: ClinicFormInitial }) {
               </div>
             );
           })}
+        </div>
+      </SettingsSection>
+
+      {/* Lembrete de consulta */}
+      <SettingsSection
+        title="Lembrete de consulta"
+        description="A IA pode mandar uma mensagem de confirmação no WhatsApp antes de cada consulta, pra reduzir faltas."
+      >
+        <div className="space-y-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.remindersEnabled}
+              onChange={(e) => update("remindersEnabled", e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded accent-brand-primary flex-shrink-0"
+            />
+            <span>
+              <span className="font-semibold text-text-primary">
+                Enviar lembrete de confirmação antes da consulta
+              </span>
+              <span className="block text-sm text-text-secondary">
+                Quando ativado, o paciente recebe uma mensagem automática
+                lembrando da consulta.
+              </span>
+            </span>
+          </label>
+
+          {state.remindersEnabled && (
+            <Field
+              label="Quanto tempo antes da consulta"
+              htmlFor="reminderHoursBefore"
+            >
+              <select
+                id="reminderHoursBefore"
+                value={state.reminderHoursBefore}
+                onChange={(e) =>
+                  update("reminderHoursBefore", Number(e.target.value))
+                }
+                className="h-11 w-full max-w-xs rounded-md border border-border bg-bg-base px-3 text-sm font-semibold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary"
+              >
+                {REMINDER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
         </div>
       </SettingsSection>
 

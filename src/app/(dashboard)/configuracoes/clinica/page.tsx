@@ -32,6 +32,8 @@ export default async function ClinicaPage() {
     state: clinic.state ?? "",
     description: clinic.description ?? "",
     workingHours,
+    remindersEnabled: clinic.remindersEnabled,
+    reminderHoursBefore: clinic.reminderHoursBefore,
   };
 
   return <ClinicForm initial={initial} />;

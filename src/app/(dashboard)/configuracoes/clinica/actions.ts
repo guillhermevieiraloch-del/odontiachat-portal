@@ -27,6 +27,8 @@ const clinicSchema = z.object({
   state: z.string().trim().max(2).optional(),
   description: z.string().trim().optional(),
   workingHours: z.record(z.string(), dayHoursSchema),
+  remindersEnabled: z.boolean(),
+  reminderHoursBefore: z.number().int().min(1).max(168),
 });
 
 export type SaveClinicInput = z.infer<typeof clinicSchema>;
@@ -63,6 +65,8 @@ export async function saveClinicAction(
       state: data.state || null,
       description: data.description || null,
       workingHours: data.workingHours,
+      remindersEnabled: data.remindersEnabled,
+      reminderHoursBefore: data.reminderHoursBefore,
     },
   });
 

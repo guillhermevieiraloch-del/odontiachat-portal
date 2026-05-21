@@ -66,8 +66,9 @@ export const config = {
      * - _next/static, _next/image
      * - favicon.ico, robots.txt
      * - api routes (handled separately)
-     * - public assets
+     * - any path with a file extension (logo.png, og-image, etc.) — sem
+     *   isso o middleware redirecionava imagens do /public pro /login
      */
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|api).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|api|.*\\..*).*)",
   ],
 };

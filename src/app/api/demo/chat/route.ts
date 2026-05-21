@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,25 +16,6 @@ export const runtime = "nodejs";
 // 8 messages per IP per 30 min — enough to demo, not enough to scrape.
 const RATE_LIMIT = 8;
 const WINDOW_MS = 30 * 60 * 1000;
-const ipBuckets = new Map<string, { count: number; resetAt: number }>();
-
-function takeRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const bucket = ipBuckets.get(ip);
-  if (!bucket || bucket.resetAt < now) {
-    ipBuckets.set(ip, { count: 1, resetAt: now + WINDOW_MS });
-    return true;
-  }
-  if (bucket.count >= RATE_LIMIT) return false;
-  bucket.count++;
-  return true;
-}
-
-function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
-}
 
 const DEMO_SYSTEM_PROMPT = `Você é a atendente virtual da Clínica Sorriso Demo, uma clínica odontológica fictícia usada para demonstração do OdontIAChat.
 
@@ -85,12 +67,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const ip = getClientIp(req);
-  if (!takeRateLimit(ip)) {
-    return NextResponse.json(
-      { error: "rate_limited" },
-      { status: 429 },
-    );
+  if (!rateLimit("demo", clientIp(req), RATE_LIMIT, WINDOW_MS)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   let body: { messages?: ChatMessage[] };

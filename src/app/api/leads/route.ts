@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { sendLeadNotification } from "@/lib/email";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const leadSchema = z.object({
   name: z.string().min(2, "Informe seu nome"),
@@ -22,6 +23,14 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
+  // Public endpoint — rate limit by IP to stop form spam / DB flooding.
+  if (!rateLimit("leads", clientIp(req), 5, 10 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Muitas tentativas. Aguarde alguns minutos." },
+      { status: 429, headers: CORS_HEADERS },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

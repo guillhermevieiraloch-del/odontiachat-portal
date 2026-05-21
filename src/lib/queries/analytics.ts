@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { subDays, startOfDay, endOfDay } from "date-fns";
+import { subDays, startOfDay } from "date-fns";
 
 export interface AnalyticsSummary {
   totalConversations: number;
@@ -111,27 +111,58 @@ export async function getAnalyticsSummary(
 
 /**
  * Daily series for the activity chart, 30 days back.
+ *
+ * Fetches the whole window in 3 queries and buckets by day in memory —
+ * the previous version fired 90 sequential queries (30 days × 3), which
+ * blocked the analytics page for seconds.
  */
 export async function getAnalyticsDaily(clinicId: string, daysBack = 30) {
-  const points: { date: string; conversas: number; agendamentos: number; mensagens: number }[] = [];
   const today = new Date();
+  const windowStart = startOfDay(subDays(today, daysBack - 1));
+
+  const [convs, appts, msgs] = await Promise.all([
+    db.conversation.findMany({
+      where: { clinicId, createdAt: { gte: windowStart } },
+      select: { createdAt: true },
+    }),
+    db.appointment.findMany({
+      where: { clinicId, createdAt: { gte: windowStart } },
+      select: { createdAt: true },
+    }),
+    db.message.findMany({
+      where: { conversation: { clinicId }, createdAt: { gte: windowStart } },
+      select: { createdAt: true },
+    }),
+  ]);
+
+  const dayKey = (d: Date) => startOfDay(d).toISOString().slice(0, 10);
+
+  const buckets = new Map<
+    string,
+    { date: string; conversas: number; agendamentos: number; mensagens: number }
+  >();
   for (let i = daysBack - 1; i >= 0; i--) {
     const d = subDays(today, i);
-    const start = startOfDay(d);
-    const end = endOfDay(d);
-    const [c, a, m] = await Promise.all([
-      db.conversation.count({ where: { clinicId, createdAt: { gte: start, lte: end } } }),
-      db.appointment.count({ where: { clinicId, createdAt: { gte: start, lte: end } } }),
-      db.message.count({
-        where: { conversation: { clinicId }, createdAt: { gte: start, lte: end } },
-      }),
-    ]);
-    points.push({
+    buckets.set(dayKey(d), {
       date: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-      conversas: c,
-      agendamentos: a,
-      mensagens: m,
+      conversas: 0,
+      agendamentos: 0,
+      mensagens: 0,
     });
   }
-  return points;
+
+  for (const c of convs) {
+    const b = buckets.get(dayKey(c.createdAt));
+    if (b) b.conversas++;
+  }
+  for (const a of appts) {
+    const b = buckets.get(dayKey(a.createdAt));
+    if (b) b.agendamentos++;
+  }
+  for (const m of msgs) {
+    const b = buckets.get(dayKey(m.createdAt));
+    if (b) b.mensagens++;
+  }
+
+  return Array.from(buckets.values());
 }

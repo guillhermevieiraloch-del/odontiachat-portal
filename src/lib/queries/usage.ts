@@ -40,19 +40,18 @@ export async function getCurrentMonthUsage(
   const plan = getPlan(planId);
   const cycleEnd = addMonths(cycleStart, 1);
 
-  const events = await db.usageEvent.findMany({
-    where: {
-      clinicId,
-      createdAt: { gte: cycleStart, lt: cycleEnd },
-    },
-    select: { type: true, estimatedCostCents: true },
-  });
-
-  const messagesUsed = events.filter((e) => e.type === "ai_message").length;
-  const estimatedCostCents = events.reduce(
-    (sum, e) => sum + e.estimatedCostCents,
-    0,
-  );
+  // Two cheap indexed queries instead of loading every event row into memory.
+  const window = { gte: cycleStart, lt: cycleEnd };
+  const [messagesUsed, costAgg] = await Promise.all([
+    db.usageEvent.count({
+      where: { clinicId, type: "ai_message", createdAt: window },
+    }),
+    db.usageEvent.aggregate({
+      where: { clinicId, createdAt: window },
+      _sum: { estimatedCostCents: true },
+    }),
+  ]);
+  const estimatedCostCents = costAgg._sum.estimatedCostCents ?? 0;
 
   const limit = plan.monthlyMessageLimit;
   const usageRatio =

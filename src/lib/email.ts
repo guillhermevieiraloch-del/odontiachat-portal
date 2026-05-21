@@ -203,7 +203,6 @@ export async function sendUsageAlertEmail(
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM ?? "OdontIAChat <onboarding@resend.dev>";
 
-  const isOver = payload.threshold >= 100;
   const subjectMap = {
     80: `Você usou 80% do limite mensal — ${payload.clinicName}`,
     95: `⚠️ Você está quase no limite mensal — ${payload.clinicName}`,

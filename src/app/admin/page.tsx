@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { getAdminOverview } from "@/lib/queries/admin";
 import { formatPriceBRL } from "@/lib/plans";
 import { Logo } from "@/components/brand/logo";
@@ -27,7 +27,35 @@ function trialBadge(iso: string | null): { text: string; cls: string } | null {
 }
 
 export default async function AdminPage() {
-  await requireAdmin();
+  const ctx = await requireUser();
+
+  // Em vez de redirect silencioso: mostra exatamente o que o servidor lê.
+  if (!ctx.profile.isPlatformAdmin) {
+    return (
+      <div className="min-h-screen bg-bg-soft flex items-center justify-center px-4">
+        <div className="max-w-lg w-full rounded-xl border border-border bg-bg-base p-8">
+          <h1 className="text-xl font-display font-bold text-text-primary">
+            Acesso restrito ao centro de controle
+          </h1>
+          <p className="mt-2 text-sm text-text-secondary">
+            Esta conta não está marcada como administradora da plataforma.
+          </p>
+          <div className="mt-4 rounded-lg bg-bg-mist p-4 text-sm font-mono text-text-primary space-y-1">
+            <p>email: {ctx.authUser.email ?? "(sem email)"}</p>
+            <p>user id: {ctx.profile.id}</p>
+            <p>isPlatformAdmin: {JSON.stringify(ctx.profile.isPlatformAdmin)}</p>
+          </div>
+          <Link
+            href="/dashboard"
+            className="mt-5 inline-block text-sm font-semibold text-brand-primary hover:underline"
+          >
+            Ir para o portal da clínica
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const { clinics, totals } = await getAdminOverview();
 
   const kpis = [

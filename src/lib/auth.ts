@@ -26,3 +26,21 @@ export async function requireUser() {
 
   return { authUser: user, profile, clinic: profile.clinic };
 }
+
+/**
+ * Gate for the internal developer area (/admin/*).
+ * Allowed emails come from the ADMIN_EMAILS env var (comma-separated).
+ * Anyone not on the list is bounced to the normal dashboard.
+ */
+export async function requireAdmin() {
+  const ctx = await requireUser();
+  const allow = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (!allow.includes(ctx.authUser.email?.toLowerCase() ?? "")) {
+    redirect("/dashboard");
+  }
+  return ctx;
+}

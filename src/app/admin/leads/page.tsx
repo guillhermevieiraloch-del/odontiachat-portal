@@ -1,14 +1,12 @@
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { Logo } from "@/components/brand/logo";
 import { LeadRow } from "./lead-row";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLeadsPage() {
-  // For now, any authenticated user can see it. Add proper role gating later
-  // (e.g. only specific founder emails or a SUPERADMIN role).
-  await requireUser();
+  await requireAdmin();
 
   const leads = await db.lead.findMany({
     orderBy: { createdAt: "desc" },

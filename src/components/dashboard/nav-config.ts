@@ -28,6 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
     children: [
       { label: "Clínica", href: "/configuracoes/clinica" },
       { label: "Dentistas", href: "/configuracoes/dentistas" },
+      { label: "Procedimentos", href: "/configuracoes/procedimentos" },
       { label: "Conhecimento (IA)", href: "/configuracoes/conhecimento" },
       { label: "WhatsApp", href: "/configuracoes/whatsapp" },
       { label: "Integrações", href: "/configuracoes/integracoes" },
@@ -47,6 +48,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/configuracoes": "Configurações",
   "/configuracoes/clinica": "Clínica",
   "/configuracoes/dentistas": "Dentistas",
+  "/configuracoes/procedimentos": "Procedimentos",
   "/configuracoes/conhecimento": "Conhecimento (IA)",
   "/configuracoes/whatsapp": "WhatsApp",
   "/configuracoes/integracoes": "Integrações",

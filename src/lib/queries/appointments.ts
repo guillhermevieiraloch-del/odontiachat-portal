@@ -39,13 +39,11 @@ export async function listAppointments(
 }
 
 /**
- * Lookups que o calendário precisa pra renderizar nomes (patient, procedure, dentist).
- * O componente atual de calendário usa MOCK_PATIENTS, MOCK_PROCEDURES, MOCK_DENTISTS
- * via helpers getPatient/getProcedure/getDentist — vamos retornar listas reais e
- * adaptar o calendário pra recebê-las via prop.
+ * Lookups que o calendário precisa pra renderizar nomes
+ * (patient, procedure, dentist) e pra montar o filtro por dentista.
  */
 export async function listAppointmentMetadata(clinicId: string) {
-  const [patients, procedures] = await Promise.all([
+  const [patients, procedures, dentists] = await Promise.all([
     db.patient.findMany({
       where: { clinicId },
       select: { id: true, name: true, phone: true },
@@ -61,6 +59,11 @@ export async function listAppointmentMetadata(clinicId: string) {
         acceptsInsurance: true,
         showPrice: true,
       },
+      orderBy: { name: "asc" },
+    }),
+    db.dentist.findMany({
+      where: { clinicId, active: true },
+      select: { id: true, name: true, specialty: true },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -79,7 +82,6 @@ export async function listAppointmentMetadata(clinicId: string) {
       acceptsInsurance: p.acceptsInsurance,
       showPrice: p.showPrice,
     })),
-    // Dentists are not in schema yet — TODO: add Dentist model
-    dentists: [] as { id: string; name: string; specialty: string }[],
+    dentists,
   };
 }

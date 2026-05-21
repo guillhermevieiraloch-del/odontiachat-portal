@@ -67,4 +67,37 @@ export const botClient = {
       `/sessions/${clinicId}/conversations/${conversationId}/send`,
       { method: "POST", json: { content } },
     ),
+
+  // ─── Google Calendar sync (manual appointments from the dashboard) ───
+  createCalendarEvent: (
+    clinicId: string,
+    payload: {
+      patientName: string;
+      patientPhone?: string;
+      service: string;
+      startsAt: string;
+      endsAt: string;
+      dentistId?: string;
+      dentistName?: string;
+    },
+  ) =>
+    call<{ ok: boolean; googleEventId: string | null }>(
+      `/sessions/${clinicId}/calendar/event`,
+      { method: "POST", json: payload },
+    ),
+
+  updateCalendarEvent: (
+    clinicId: string,
+    eventId: string,
+    payload: { startsAt: string; endsAt: string },
+  ) =>
+    call<{ ok: boolean }>(
+      `/sessions/${clinicId}/calendar/event/${eventId}`,
+      { method: "PATCH", json: payload },
+    ),
+
+  deleteCalendarEvent: (clinicId: string, eventId: string) =>
+    call<{ ok: boolean }>(`/sessions/${clinicId}/calendar/event/${eventId}`, {
+      method: "DELETE",
+    }),
 };

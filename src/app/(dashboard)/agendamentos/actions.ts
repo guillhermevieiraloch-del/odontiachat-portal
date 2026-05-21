@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { botClient } from "@/lib/bot-client";
 
 const createSchema = z.object({
   patientId: z.string().optional(),
@@ -104,6 +105,40 @@ export async function createAppointmentAction(
     });
   }
 
+  // Reflect into the clinic's Google Calendar — best-effort, never blocks
+  // the booking if the bot is unreachable (DB is the source of truth).
+  try {
+    const [patient, dentist] = await Promise.all([
+      db.patient.findUnique({
+        where: { id: patientId },
+        select: { name: true, phone: true },
+      }),
+      data.dentistId
+        ? db.dentist.findUnique({
+            where: { id: data.dentistId },
+            select: { name: true },
+          })
+        : Promise.resolve(null),
+    ]);
+    const result = await botClient.createCalendarEvent(clinic.id, {
+      patientName: patient?.name ?? "Paciente",
+      patientPhone: patient?.phone ?? "",
+      service: procedure.name,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      dentistId: data.dentistId || undefined,
+      dentistName: dentist?.name,
+    });
+    if (result.googleEventId) {
+      await db.appointment.update({
+        where: { id: appt.id },
+        data: { googleEventId: result.googleEventId },
+      });
+    }
+  } catch (err) {
+    console.error("Falha ao sincronizar com Google Calendar:", err);
+  }
+
   revalidatePath("/agendamentos");
   revalidatePath("/dashboard");
   return { ok: true, id: appt.id };
@@ -181,7 +216,8 @@ export async function updateAppointmentAction(
   });
 
   // Reagendou: atualiza reminders pendentes para 24h antes do novo horário
-  if (startsAt.getTime() !== current.startsAt.getTime()) {
+  const timeChanged = startsAt.getTime() !== current.startsAt.getTime();
+  if (timeChanged) {
     const newReminderTime = new Date(startsAt.getTime() - 24 * 60 * 60 * 1000);
     if (newReminderTime.getTime() > Date.now() + 60 * 60 * 1000) {
       await db.reminder.updateMany({
@@ -196,6 +232,18 @@ export async function updateAppointmentAction(
     }
   }
 
+  // Move the Google Calendar event if the time changed — best-effort.
+  if (timeChanged && current.googleEventId) {
+    try {
+      await botClient.updateCalendarEvent(clinic.id, current.googleEventId, {
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+      });
+    } catch (err) {
+      console.error("Falha ao mover evento no Google Calendar:", err);
+    }
+  }
+
   revalidatePath("/agendamentos");
   revalidatePath("/dashboard");
   return { ok: true, id: data.id };
@@ -204,19 +252,33 @@ export async function updateAppointmentAction(
 export async function cancelAppointmentAction(id: string): Promise<ActionResult> {
   const { clinic } = await requireUser();
 
-  const updated = await db.appointment.updateMany({
+  const appt = await db.appointment.findFirst({
     where: { id, clinicId: clinic.id },
-    data: { status: "cancelled" },
+    select: { id: true, googleEventId: true },
   });
-  if (updated.count === 0) {
+  if (!appt) {
     return { ok: false, error: "Agendamento não encontrado" };
   }
+
+  await db.appointment.update({
+    where: { id },
+    data: { status: "cancelled" },
+  });
 
   // Cancela lembretes pendentes deste appointment
   await db.reminder.updateMany({
     where: { appointmentId: id, status: "pending" },
     data: { status: "skipped" },
   });
+
+  // Remove o evento do Google Calendar — best-effort.
+  if (appt.googleEventId) {
+    try {
+      await botClient.deleteCalendarEvent(clinic.id, appt.googleEventId);
+    } catch (err) {
+      console.error("Falha ao remover evento do Google Calendar:", err);
+    }
+  }
 
   revalidatePath("/agendamentos");
   revalidatePath("/dashboard");

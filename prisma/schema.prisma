@@ -329,6 +329,7 @@ model Appointment {
   endsAt      DateTime
   status      String     @default("confirmed") // confirmed | pending | cancelled | completed
   notes       String?
+  googleEventId String?  // id do evento no Google Calendar (pra sincronizar cancel/reschedule)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

@@ -23,6 +23,7 @@ import { Field } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import {
   saveClinicKnowledgeAction,
+  skipKnowledgeSetup,
   type KnowledgeInput,
 } from "@/app/(dashboard)/configuracoes/conhecimento/actions";
 
@@ -65,6 +66,7 @@ export function KnowledgeForm({ initial, mode }: Props) {
   const toast = useToast();
   const [state, setState] = useState<KnowledgeFormInitial>(initial);
   const [pending, start] = useTransition();
+  const [skipping, startSkip] = useTransition();
   const [justSaved, setJustSaved] = useState(false);
 
   const filledCount = useMemo(() => {
@@ -392,14 +394,27 @@ export function KnowledgeForm({ initial, mode }: Props) {
               </span>
             )}
           </div>
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            disabled={pending || (mode === "setup" && !canFinishSetup)}
-          >
-            {pending ? "Salvando..." : mode === "setup" ? "Concluir e ir pro dashboard" : "Salvar alterações"}
-          </Button>
+          <div className="flex items-center gap-3">
+            {mode === "setup" && (
+              <button
+                type="button"
+                onClick={() => startSkip(() => skipKnowledgeSetup())}
+                disabled={pending || skipping}
+                title="Você pode preencher isso depois em Configurações → Conhecimento. Sem isso, a IA responde de forma mais genérica."
+                className="text-sm font-semibold text-text-muted hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {skipping ? "Pulando..." : "Configurar depois"}
+              </button>
+            )}
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={pending || skipping || (mode === "setup" && !canFinishSetup)}
+            >
+              {pending ? "Salvando..." : mode === "setup" ? "Concluir e ir pro dashboard" : "Salvar alterações"}
+            </Button>
+          </div>
         </div>
       </div>
     </form>

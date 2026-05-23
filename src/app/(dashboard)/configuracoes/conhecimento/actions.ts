@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
@@ -153,4 +154,15 @@ export async function saveClinicKnowledgeAction(
   revalidatePath("/setup-conhecimento");
   revalidatePath("/dashboard");
   return { ok: true };
+}
+
+export async function skipKnowledgeSetup(): Promise<void> {
+  const { clinic } = await requireUser();
+  if (!clinic.knowledgeCompletedAt) {
+    await db.clinic.update({
+      where: { id: clinic.id },
+      data: { knowledgeCompletedAt: new Date() },
+    });
+  }
+  redirect("/dashboard");
 }

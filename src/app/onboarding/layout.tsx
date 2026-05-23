@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
+import { finishOnboarding } from "./actions";
 
 export default function OnboardingLayout({
   children,
@@ -23,12 +24,14 @@ export default function OnboardingLayout({
           <Link href="/" aria-label="Início">
             <Logo size="md" />
           </Link>
-          <Link
-            href="/dashboard"
-            className="text-sm font-semibold text-text-secondary hover:text-brand-primary"
-          >
-            Pular por enquanto →
-          </Link>
+          <form action={finishOnboarding}>
+            <button
+              type="submit"
+              className="text-sm font-semibold text-text-secondary hover:text-brand-primary"
+            >
+              Pular por enquanto →
+            </button>
+          </form>
         </header>
 
         <main className="flex flex-1 items-start justify-center px-4 py-8 lg:py-12">

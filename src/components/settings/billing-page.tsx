@@ -1,8 +1,8 @@
 "use client";
 
-import { Sparkles, Zap, Receipt, AlertTriangle, TrendingUp } from "lucide-react";
+import { Sparkles, Zap, Receipt, AlertTriangle, TrendingUp, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPriceBRL } from "@/lib/plans";
+import { formatPriceBRL, PLANS } from "@/lib/plans";
 
 interface UsageProps {
   messagesUsed: number;
@@ -147,6 +147,70 @@ export function BillingPage({
           </div>
         </div>
       </section>
+
+      {/* Escolha um plano — só pra quem ainda está em trial */}
+      {isTrial && (
+        <section className="rounded-lg border border-border bg-bg-base p-6">
+          <header className="mb-4">
+            <h3 className="font-display font-bold text-lg text-text-primary">
+              Pronto pra continuar? Escolha um plano
+            </h3>
+            <p className="mt-1 text-sm text-text-secondary">
+              Cobrança mensal pelo Mercado Pago. Cancele quando quiser.
+            </p>
+          </header>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {(["solo", "clinica", "pro"] as const).map((id) => {
+              const p = PLANS[id];
+              if (!p.checkoutUrl) return null;
+              const featured = id === "clinica";
+              return (
+                <a
+                  key={id}
+                  href={p.checkoutUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "group rounded-lg border p-4 transition-colors",
+                    featured
+                      ? "border-brand-primary bg-brand-accent-soft/30 hover:bg-brand-accent-soft/50"
+                      : "border-border bg-bg-base hover:border-brand-primary hover:bg-brand-accent-soft/20",
+                  )}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="font-display font-bold text-text-primary">
+                      {p.label}
+                    </p>
+                    {featured && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">
+                        Mais popular
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 font-display font-extrabold text-2xl text-text-primary">
+                    {formatPriceBRL(p.priceCents)}
+                    <span className="text-xs font-semibold text-text-muted">
+                      {" "}
+                      /mês
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    {p.monthlyMessageLimit.toLocaleString("pt-BR")} msgs/mês
+                  </p>
+                  <p className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-primary group-hover:underline">
+                    Assinar
+                    <ArrowRight size={14} />
+                  </p>
+                </a>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-xs text-text-muted">
+            Depois de pagar, seu plano pode levar alguns minutos pra ser
+            ativado.
+          </p>
+        </section>
+      )}
 
       {/* Uso do mês */}
       <section className="rounded-lg border border-border bg-bg-base p-6">

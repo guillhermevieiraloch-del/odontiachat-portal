@@ -236,6 +236,16 @@ export default function PrecosPage() {
                 >
                   {p.id === "enterprise" ? "Falar com vendas" : "Começar trial"}
                 </Link>
+                {p.checkoutUrl && (
+                  <a
+                    href={p.checkoutUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 text-center text-xs font-semibold text-brand-primary hover:underline"
+                  >
+                    ou assinar agora →
+                  </a>
+                )}
               </div>
             );
           })}

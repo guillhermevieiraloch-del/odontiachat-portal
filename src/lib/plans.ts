@@ -33,6 +33,8 @@ export interface PlanConfig {
   features: PlanFeatures;
   /** True only on trial — used for trialEndsAt logic. */
   isTrial?: boolean;
+  /** Public Mercado Pago subscription checkout URL. */
+  checkoutUrl?: string;
 }
 
 const BASE_FEATURES_FREE: PlanFeatures = {
@@ -68,6 +70,8 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxWhatsappLines: 1,
     overageCents: 15, // R$ 0,15/msg
     features: { ...BASE_FEATURES_FREE },
+    checkoutUrl:
+      "https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=af9bc5c05d04475fa6ca44ee056e8f85",
   },
   clinica: {
     id: "clinica",
@@ -82,6 +86,8 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       ...BASE_FEATURES_FREE,
       advancedAnalytics: false, // analytics básico já é dashboard padrão
     },
+    checkoutUrl:
+      "https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=b4852432170f4ccca70a279623d3dda7",
   },
   pro: {
     id: "pro",
@@ -101,6 +107,8 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       whiteLabel: false,
       multiWhatsapp: false,
     },
+    checkoutUrl:
+      "https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=0f5ef1e2847e483aa8c5b1587d9535b6",
   },
   enterprise: {
     id: "enterprise",

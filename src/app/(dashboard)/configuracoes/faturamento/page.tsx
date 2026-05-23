@@ -1,12 +1,18 @@
 import { requireUser } from "@/lib/auth";
 import { getCurrentMonthUsage } from "@/lib/queries/usage";
 import { db } from "@/lib/db";
-import { BillingPage } from "@/components/settings/billing-page";
+import { BillingPage, type PlanCheckoutLink } from "@/components/settings/billing-page";
+import { checkoutUrlForClinic } from "@/lib/mercadopago";
 
 export const dynamic = "force-dynamic";
 
-export default async function FaturamentoPage() {
+interface SearchParams {
+  searchParams?: Promise<{ mp?: string }>;
+}
+
+export default async function FaturamentoPage({ searchParams }: SearchParams) {
   const { clinic } = await requireUser();
+  const params = (await searchParams) ?? {};
 
   const [usage, dailyEvents] = await Promise.all([
     getCurrentMonthUsage(clinic.id, clinic.plan, clinic.billingCycleStart),
@@ -31,6 +37,15 @@ export default async function FaturamentoPage() {
     .map(([day, count]) => ({ day, count }))
     .sort((a, b) => a.day.localeCompare(b.day));
 
+  const checkoutLinks: PlanCheckoutLink[] = (
+    ["solo", "clinica", "pro"] as const
+  )
+    .map((id) => {
+      const url = checkoutUrlForClinic(id, clinic.id);
+      return url ? { id, url } : null;
+    })
+    .filter((x): x is PlanCheckoutLink => x !== null);
+
   return (
     <BillingPage
       usage={{
@@ -39,7 +54,6 @@ export default async function FaturamentoPage() {
           usage.messageLimit === Infinity ? null : usage.messageLimit,
         usageRatio: usage.usageRatio,
         isOver: usage.isOver,
-        estimatedCostCents: usage.estimatedCostCents,
       }}
       plan={{
         id: usage.plan.id,
@@ -50,6 +64,8 @@ export default async function FaturamentoPage() {
       cycleStart={usage.cycleStart.toISOString()}
       cycleEnd={usage.cycleEnd.toISOString()}
       daily={daily}
+      checkoutLinks={checkoutLinks}
+      showPostCheckoutBanner={params.mp === "success"}
     />
   );
 }

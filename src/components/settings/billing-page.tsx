@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Zap, Receipt, AlertTriangle, TrendingUp, ArrowRight } from "lucide-react";
+import { Sparkles, Zap, AlertTriangle, TrendingUp, ArrowRight, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPriceBRL, PLANS } from "@/lib/plans";
 
@@ -9,7 +9,6 @@ interface UsageProps {
   messageLimit: number | null; // null = unlimited
   usageRatio: number;
   isOver: boolean;
-  estimatedCostCents: number;
 }
 
 interface PlanProps {
@@ -23,6 +22,11 @@ interface DailyPoint {
   count: number;
 }
 
+export interface PlanCheckoutLink {
+  id: "solo" | "clinica" | "pro";
+  url: string;
+}
+
 export interface BillingPageProps {
   usage: UsageProps;
   plan: PlanProps;
@@ -30,6 +34,10 @@ export interface BillingPageProps {
   cycleStart: string;
   cycleEnd: string;
   daily: DailyPoint[];
+  /** Per-clinic checkout URLs (external_reference + back_url already appended). */
+  checkoutLinks: PlanCheckoutLink[];
+  /** Whether to show the "pagamento recebido, aguardando ativação" banner. */
+  showPostCheckoutBanner?: boolean;
 }
 
 function formatDateBR(iso: string): string {
@@ -54,7 +62,10 @@ export function BillingPage({
   cycleStart,
   cycleEnd,
   daily,
+  checkoutLinks,
+  showPostCheckoutBanner,
 }: BillingPageProps) {
+  const checkoutByPlan = new Map(checkoutLinks.map((l) => [l.id, l.url]));
   const limitDisplay =
     usage.messageLimit === null
       ? "ilimitado"
@@ -82,6 +93,22 @@ export function BillingPage({
           Acompanhe seu uso, plano e custos do ciclo atual.
         </p>
       </header>
+
+      {/* Post-checkout success banner — shown after MP redirects back */}
+      {showPostCheckoutBanner && (
+        <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 flex items-start gap-3">
+          <CheckCircle2 size={18} className="flex-shrink-0 mt-0.5 text-success" />
+          <div className="flex-1">
+            <p className="font-semibold text-text-primary">
+              Pagamento recebido — aguardando ativação
+            </p>
+            <p className="mt-0.5 text-sm text-text-secondary">
+              O Mercado Pago já recebeu seu pagamento. Seu plano costuma ser
+              ativado em até 5 minutos. Atualize a página depois.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Trial banner */}
       {isTrial && trialDaysLeft !== null && (
@@ -162,12 +189,13 @@ export function BillingPage({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {(["solo", "clinica", "pro"] as const).map((id) => {
               const p = PLANS[id];
-              if (!p.checkoutUrl) return null;
+              const url = checkoutByPlan.get(id);
+              if (!url) return null;
               const featured = id === "clinica";
               return (
                 <a
                   key={id}
-                  href={p.checkoutUrl}
+                  href={url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(
@@ -306,26 +334,6 @@ export function BillingPage({
         </section>
       )}
 
-      {/* Custo estimado */}
-      <section className="rounded-lg border border-border bg-bg-base p-6 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-success/10 text-success">
-            <Receipt size={18} />
-          </div>
-          <div>
-            <h3 className="font-display font-bold text-text-primary">
-              Custo operacional estimado
-            </h3>
-            <p className="text-xs text-text-muted">
-              Soma dos custos de IA neste ciclo (informativo — não é o preço do
-              seu plano)
-            </p>
-          </div>
-        </div>
-        <p className="font-display font-extrabold text-2xl text-text-primary tabular-nums">
-          {formatPriceBRL(Math.round(usage.estimatedCostCents))}
-        </p>
-      </section>
     </div>
   );
 }

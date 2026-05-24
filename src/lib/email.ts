@@ -351,6 +351,8 @@ export async function sendTrialEndingEmail(
 }
 
 function formatLeadEmail(lead: Lead): string {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://app.odontiachat.com.br";
   return [
     `Novo lead na landing page:`,
     ``,
@@ -361,7 +363,7 @@ function formatLeadEmail(lead: Lead): string {
     `🦷 Dentistas: ${lead.dentists ?? "não informado"}`,
     ``,
     `📅 Recebido em: ${lead.createdAt.toLocaleString("pt-BR")}`,
-    `🔗 Ver no admin: http://localhost:3000/admin/leads`,
+    `🔗 Ver no admin: ${baseUrl}/admin/leads`,
     ``,
     `Responda esse e-mail para falar direto com o lead.`,
   ].join("\n");

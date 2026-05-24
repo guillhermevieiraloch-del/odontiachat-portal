@@ -138,16 +138,22 @@ export async function signupAction(
   const supabase = await createClient();
   await supabase.auth.signInWithPassword({ email, password });
 
-  // 4. Welcome email — só quando é signup normal (não via invite, o convidado já teve email)
+  // 4. Welcome email — só quando é signup normal (não via invite, o convidado já teve email).
+  // Await so the serverless function isn't killed before Resend responds.
+  // Failure here doesn't block signup — the user is already created.
   if (!invite) {
     const origin =
-      process.env.NEXT_PUBLIC_PORTAL_URL ?? "http://localhost:3000";
-    sendWelcomeEmail({
-      name,
-      email,
-      clinicName: clinicName!,
-      loginUrl: `${origin}/login`,
-    }).catch((err) => console.error("Welcome email falhou:", err));
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://app.odontiachat.com.br";
+    try {
+      await sendWelcomeEmail({
+        name,
+        email,
+        clinicName: clinicName!,
+        loginUrl: `${origin}/login`,
+      });
+    } catch (err) {
+      console.error("Welcome email falhou:", err);
+    }
   }
 
   if (invite) {

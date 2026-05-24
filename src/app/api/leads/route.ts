@@ -7,7 +7,14 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 const leadSchema = z.object({
   name: z.string().min(2, "Informe seu nome"),
   email: z.string().email("E-mail inválido"),
-  whatsapp: z.string().min(8, "WhatsApp inválido"),
+  // Brazilian mobile is 11 digits; formatted strings have ~14-16 chars
+  // ("(48) 99964-3253"). Require at least 10 digits after stripping non-digits.
+  whatsapp: z
+    .string()
+    .refine(
+      (v) => v.replace(/\D/g, "").length >= 10,
+      "WhatsApp inválido (informe DDD + número)",
+    ),
   clinicName: z.string().min(2, "Informe o nome da clínica"),
   dentists: z.string().optional(),
 });

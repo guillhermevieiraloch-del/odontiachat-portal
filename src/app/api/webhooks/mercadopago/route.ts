@@ -117,6 +117,31 @@ async function handleNotification(req: NextRequest, payload: MpNotification) {
   }
 
   if (preapproval.status === "authorized") {
+    // Idempotency: MP retries this event on transient failures, sends it again
+    // on payment recovery, and fires it on each renewal. If we always reset the
+    // billing cycle, a paying customer gets a fresh message quota every retry.
+    // Only reset cycle/alerts when the plan actually changes (trial→paid or
+    // upgrade/downgrade between paid plans).
+    const current = await db.clinic.findUnique({
+      where: { id: clinicId },
+      select: { plan: true },
+    });
+    if (!current) {
+      console.warn("[mp-webhook] clinic not found", clinicId);
+      return NextResponse.json({ ok: true, skipped: "clinic not found" });
+    }
+
+    if (current.plan === planId) {
+      console.log(
+        `[mp-webhook] clinic ${clinicId} already on ${planId} — no-op`,
+      );
+      return NextResponse.json({
+        ok: true,
+        action: "noop",
+        reason: "already on plan",
+      });
+    }
+
     await db.clinic.update({
       where: { id: clinicId },
       data: {
@@ -127,8 +152,16 @@ async function handleNotification(req: NextRequest, payload: MpNotification) {
         trialEndsAt: null,
       },
     });
-    console.log(`[mp-webhook] activated clinic ${clinicId} → plan ${planId}`);
-    return NextResponse.json({ ok: true, action: "activated", clinicId, planId });
+    console.log(
+      `[mp-webhook] activated clinic ${clinicId}: ${current.plan} → ${planId}`,
+    );
+    return NextResponse.json({
+      ok: true,
+      action: "activated",
+      clinicId,
+      planId,
+      previousPlan: current.plan,
+    });
   }
 
   if (

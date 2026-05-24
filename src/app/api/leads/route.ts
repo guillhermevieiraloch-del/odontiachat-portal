@@ -63,10 +63,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Fire-and-forget email notification (don't block the response if it fails)
-    sendLeadNotification(lead).catch((err) =>
-      console.error("Falha ao enviar e-mail de notificação:", err),
-    );
+    // Await the email so the serverless function isn't terminated before the
+    // outgoing HTTP call to Resend completes (fire-and-forget gets killed by
+    // Vercel/Lambda when the response is sent). Failures here don't block the
+    // 201 response — lead is already persisted.
+    try {
+      await sendLeadNotification(lead);
+    } catch (err) {
+      console.error("Falha ao enviar e-mail de notificação:", err);
+    }
 
     return NextResponse.json(
       { ok: true, id: lead.id },
